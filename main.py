@@ -1,4 +1,4 @@
-import Image
+from PIL import Image
 import sys
 from graph import build_graph, segment_graph
 from smooth_filter import gaussian_grid, filter_image
@@ -19,17 +19,17 @@ def threshold(size, const):
     return (const / size)
 
 def generate_image(forest, width, height):
+    # forest here is the label_forest. 
     random_color = lambda: (int(random()*255), int(random()*255), int(random()*255))
     colors = [random_color() for i in xrange(width*height)]
 
     img = Image.new('RGB', (width, height))
-    im = img.load()
-    for y in xrange(height):
-        for x in xrange(width):
-            comp = forest.find(y * width + x)
-            im[x, y] = colors[comp]
-
-    return img.transpose(Image.ROTATE_270).transpose(Image.FLIP_LEFT_RIGHT)
+    im = img.load() # For Pixel Access
+    for x in xrange(height):
+        for y in xrange(width):
+            comp = forest.find(y * height + x)
+            im[y, x] = colors[comp] # Important. Pixel Axis is (horz, vert)
+    return img
 
 if __name__ == '__main__':
     if len(sys.argv) != 7:
@@ -50,9 +50,9 @@ if __name__ == '__main__':
         print 'Image info: ', image_file.format, size, image_file.mode
 
         grid = gaussian_grid(sigma)
-
+        
         if image_file.mode == 'RGB':
-            image_file.load()
+            # image_file.load() # Useless
             r, g, b = image_file.split()
 
             r = filter_image(r, grid)
@@ -60,15 +60,15 @@ if __name__ == '__main__':
             b = filter_image(b, grid)
 
             smooth = (r, g, b)
-            diff = diff_rgb
+            diff = diff_rgb # function pointer
         else:
             smooth = filter_image(image_file, grid)
-            diff = diff_grey
+            diff = diff_grey # function pointer
 
-        graph = build_graph(smooth, size[1], size[0], diff, neighbor == 8)
+        graph = build_graph(smooth, size[0], size[1], diff, neighbor == 8)
         forest = segment_graph(graph, size[0]*size[1], K, min_size, threshold)
 
-        image = generate_image(forest, size[1], size[0])
+        image = generate_image(forest, size[0], size[1])
         image.save(sys.argv[6])
 
         print 'Number of components: %d' % forest.num_sets
